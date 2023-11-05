@@ -1,41 +1,35 @@
 #!/usr/bin/env bash
+# Displays informtation about subdomains.
 
-# Function to get DNS record information
-get_dns_record() {
-    local domain="$1"
-    local subdomain="$2"
+# uncomment for debugging purposes.
+#set -x
 
-    # Use dig command to get DNS record information
-    local record
-    record=$(dig +short "${subdomain}.${domain}")
+# for the checker to work please remove the colors.
 
-    # Check if the record exists
-    if [[ -z "$record" ]]; then
-        echo "The subdomain $subdomain does not exist."
-    else
-        # Use awk to parse the record
-        local record_type
-        local destination
-        record_type=$(echo "$record" | awk '{print $4}')
-        destination=$(echo "$record" | awk '{print $5}')
+# colors
+blue='\e[1;34m'
+brown='\e[0;33m'
+reset='\033[0m'
 
-        echo "The subdomain $subdomain is a $record_type record and points to $destination"
-    fi
+# variables & parameters
+subdomains=( "www" "lb-01" "web-01" "web-02" )
+domain="$1"
+sub="$2"
+
+dig_cmd () {
+	# func variables
+	sub="$2"
+	INFO="$(dig "$sub.$domain" | grep -A1 'ANSWER SECTION:' | awk 'NR==2')"
+	IP=$(echo "$INFO" | awk '{print $5}')
+	RECORD=$(echo "$INFO" | awk '{print $4}')
+
+	echo -e "${brown}The subdomain ${blue}$sub${brown} is a ${blue}$RECORD${brown} record and points to ${blue}$IP${reset}"
 }
 
-# Check if domain argument is provided
-if [[ -z "$1" ]]; then
-    echo "Please provide a domain name."
-    exit 1
-fi
-
-# Check if subdomain argument is provided
-if [[ -n "$2" ]]; then
-    # Get DNS record for the specified subdomain
-    get_dns_record "$1" "$2"
-else
-    # Get DNS records for default subdomains
-    for subdomain in www lb-01 web-01 web-02; do
-        get_dns_record "$1" "$subdomain"
-    done
+if [ $# -eq 1 ]; then
+	for subs in "${subdomains[@]}"; do
+		dig_cmd "$domain" "$subs"
+	done
+elif [ $# -eq 2 ]; then
+	dig_cmd "$domain" "$sub"
 fi
